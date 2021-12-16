@@ -1,0 +1,105 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  GO_VERSION: 1.17
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Build
+        run: |
+          mkdir bin
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "-s -w -X github.com/sftpgo/sftpgo-plugin-metadata/cmd.commitHash=`git describe --always --dirty` -X github.com/sftpgo/sftpgo-plugin-metadata/cmd.buildDate=`date -u +%FT%TZ`" -o bin/sftpgo-plugin-metadata-linux-amd64
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "-s -w -X github.com/sftpgo/sftpgo-plugin-metadata/cmd.commitHash=`git describe --always --dirty` -X github.com/sftpgo/sftpgo-plugin-metadata/cmd.buildDate=`date -u +%FT%TZ`" -o bin/sftpgo-plugin-metadata-linux-arm64
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 go build -trimpath -ldflags "-s -w -X github.com/sftpgo/sftpgo-plugin-metadata/cmd.commitHash=`git describe --always --dirty` -X github.com/sftpgo/sftpgo-plugin-metadata/cmd.buildDate=`date -u +%FT%TZ`" -o bin/sftpgo-plugin-metadata-linux-armv7
+          CGO_ENABLED=0 GOOS=linux GOARCH=ppc64le go build -trimpath -ldflags "-s -w -X github.com/sftpgo/sftpgo-plugin-metadata/cmd.commitHash=`git describe --always --dirty` -X github.com/sftpgo/sftpgo-plugin-metadata/cmd.buildDate=`date -u +%FT%TZ`" -o bin/sftpgo-plugin-metadata-linux-ppc64le
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-s -w -X github.com/sftpgo/sftpgo-plugin-metadata/cmd.commitHash=`git describe --always --dirty` -X github.com/sftpgo/sftpgo-plugin-metadata/cmd.buildDate=`date -u +%FT%TZ`" -o bin/sftpgo-plugin-metadata-windows-x86_64.exe
+          CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -trimpath -ldflags "-s -w -X github.com/sftpgo/sftpgo-plugin-metadata/cmd.commitHash=`git describe --always --dirty` -X github.com/sftpgo/sftpgo-plugin-metadata/cmd.buildDate=`date -u +%FT%TZ`" -o bin/sftpgo-plugin-metadata-windows-arm64.exe
+          CGO_ENABLED=0 GOOS=windows GOARCH=386 go build -trimpath -ldflags "-s -w -X github.com/sftpgo/sftpgo-plugin-metadata/cmd.commitHash=`git describe --always --dirty` -X github.com/sftpgo/sftpgo-plugin-metadata/cmd.buildDate=`date -u +%FT%TZ`" -o bin/sftpgo-plugin-metadata-windows-x86.exe
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "-s -w -X github.com/sftpgo/sftpgo-plugin-metadata/cmd.commitHash=`git describe --always --dirty` -X github.com/sftpgo/sftpgo-plugin-metadata/cmd.buildDate=`date -u +%FT%TZ`" -o bin/sftpgo-plugin-metadata-darwin-amd64
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "-s -w -X github.com/sftpgo/sftpgo-plugin-metadata/cmd.commitHash=`git describe --always --dirty` -X github.com/sftpgo/sftpgo-plugin-metadata/cmd.buildDate=`date -u +%FT%TZ`" -o bin/sftpgo-plugin-metadata-darwin-arm64
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: sftpgo-plugin-metadata
+          path: bin
+
+  test-providers:
+    name: Test supported providers
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: sftpgo_metadata
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      mariadb:
+        image: mariadb:latest
+        env:
+          MYSQL_ROOT_PASSWORD: mysql
+          MYSQL_DATABASE: sftpgo_metadata
+          MYSQL_USER: sftpgo
+          MYSQL_PASSWORD: sftpgo
+        options: >-
+          --health-cmd "mysqladmin status -h 127.0.0.1 -P 3306 -u root -p$MYSQL_ROOT_PASSWORD"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 6
+        ports:
+          - 3307:3306
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+
+      - name: Run tests using PostgreSQL provider
+        run: |
+          go test -v -p 1 -timeout 5m ./... -covermode=atomic
+        env:
+          SFTPGO_PLUGIN_EVENTSTORE_DRIVER: postgres
+          SFTPGO_PLUGIN_EVENTSTORE_DSN: "host='127.0.0.1' port=5432 dbname='sftpgo_metadata' user='postgres' password='postgres' sslmode=disable connect_timeout=10"
+
+      - name: Run tests using MySQL provider
+        run: |
+          go test -v -p 1 -timeout 5m ./... -covermode=atomic
+        env:
+          SFTPGO_PLUGIN_EVENTSTORE_DRIVER: mysql
+          SFTPGO_PLUGIN_EVENTSTORE_DSN: "sftpgo:sftpgo@tcp([127.0.0.1]:3307)/sftpgo_metadata?charset=utf8mb4&interpolateParams=true&timeout=10s&tls=false&writeTimeout=10s&readTimeout=10s&parseTime=true"
+
+  golangci-lint:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: latest
