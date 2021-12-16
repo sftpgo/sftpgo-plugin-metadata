@@ -84,15 +84,15 @@ jobs:
         run: |
           go test -v -p 1 -timeout 5m ./... -covermode=atomic
         env:
-          SFTPGO_PLUGIN_EVENTSTORE_DRIVER: postgres
-          SFTPGO_PLUGIN_EVENTSTORE_DSN: "host='127.0.0.1' port=5432 dbname='sftpgo_metadata' user='postgres' password='postgres' sslmode=disable connect_timeout=10"
+          SFTPGO_PLUGIN_METADATA_DRIVER: postgres
+          SFTPGO_PLUGIN_METADATA_DSN: "host='127.0.0.1' port=5432 dbname='sftpgo_metadata' user='postgres' password='postgres' sslmode=disable connect_timeout=10"
 
       - name: Run tests using MySQL provider
         run: |
           go test -v -p 1 -timeout 5m ./... -covermode=atomic
         env:
-          SFTPGO_PLUGIN_EVENTSTORE_DRIVER: mysql
-          SFTPGO_PLUGIN_EVENTSTORE_DSN: "sftpgo:sftpgo@tcp([127.0.0.1]:3307)/sftpgo_metadata?charset=utf8mb4&interpolateParams=true&timeout=10s&tls=false&writeTimeout=10s&readTimeout=10s&parseTime=true"
+          SFTPGO_PLUGIN_METADATA_DRIVER: mysql
+          SFTPGO_PLUGIN_METADATA_DSN: "sftpgo:sftpgo@tcp([127.0.0.1]:3307)/sftpgo_metadata?charset=utf8mb4&interpolateParams=true&timeout=10s&tls=false&writeTimeout=10s&readTimeout=10s&parseTime=true"
 
   golangci-lint:
     name: golangci-lint
