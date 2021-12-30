@@ -3,6 +3,7 @@ package db
 import (
 	"fmt"
 	"path"
+	"strings"
 	"testing"
 	"time"
 
@@ -166,6 +167,46 @@ func TestGetFolders(t *testing.T) {
 	folders2, err = m.GetFolders(storageID2, 0, "")
 	assert.NoError(t, err)
 	assert.Len(t, folders2, 0)
+}
+
+func TestFolderNameUniqueConstraint(t *testing.T) {
+	m := Metadater{}
+	storageID := "gs://mybucket"
+
+	var sb strings.Builder
+	sb.WriteString("/long/folder/name/")
+	for i := 0; i < 4096; i++ {
+		sb.WriteString("s")
+	}
+	folderName := sb.String()
+
+	for i := 0; i < 10; i++ {
+		err := m.SetModificationTime(storageID, path.Join(folderName, fmt.Sprintf("file%v.txt", i)),
+			getTimeAsMsSinceEpoch(time.Now()))
+		assert.NoError(t, err)
+	}
+	folders, err := m.GetFolders(storageID, 0, "")
+	assert.NoError(t, err)
+	assert.Len(t, folders, 1)
+
+	files, err := m.GetModificationTimes(storageID, folderName)
+	assert.NoError(t, err)
+	assert.Len(t, files, 10)
+
+	for i := 0; i < 10; i++ {
+		err = m.RemoveMetadata(storageID, path.Join(folderName, fmt.Sprintf("file%v.txt", i)))
+		assert.NoError(t, err)
+	}
+
+	files, err = m.GetModificationTimes(storageID, folderName)
+	assert.NoError(t, err)
+	assert.Len(t, files, 0)
+
+	err = removeUnreferencedFolders()
+	assert.NoError(t, err)
+	folders, err = m.GetFolders(storageID, 0, "")
+	assert.NoError(t, err)
+	assert.Len(t, folders, 0)
 }
 
 func checkNotFoundError(t *testing.T, err error) {

@@ -73,9 +73,11 @@ To use Postgres you have to use `postgres` as driver. If you have a database nam
 
 Please refer to the documentation [here](https://github.com/go-gorm/postgres) for details about the dsn.
 
-### MySQL
+### MariaDB
 
-To use MySQL you have to use `mysql` as driver. If you have a database named `sftpgo_metadata` on localhost and you want to connect to it using the user `sftpgo` with the password `sftpgopass` you can use a DSN like the following one.
+:warning: The plugin enforces a unique index on the folder path. Folder paths can have arbitrary lengths, so we store them as `text`. MySQL fails to add such index with error: `Error 1170: BLOB/TEXT column 'path' used in key specification without a key length`. MariaDB works fine, at least the recent versions such as 10.6.x.
+
+To use MariaDB you have to use `mysql` as driver. If you have a database named `sftpgo_metadata` on localhost and you want to connect to it using the user `sftpgo` with the password `sftpgopass` you can use a DSN like the following one.
 
 ```shell
 "sftpgo:sftpgopass@tcp([127.0.0.1]:3306)/sftpgo_metadata?charset=utf8mb4&interpolateParams=true&timeout=10s&tls=false&writeTimeout=10s&readTimeout=10s&parseTime=true"
