@@ -45,7 +45,7 @@ func ResetDatabase(db *gorm.DB) error {
 
 	db = db.WithContext(ctx)
 	if !db.Migrator().HasTable(options.TableName) {
-		fmt.Printf("no migration was applied, nothing to do")
+		fmt.Println("no migration was applied, nothing to do")
 		return nil
 	}
 	m := gormigrate.New(db, options, migrations)

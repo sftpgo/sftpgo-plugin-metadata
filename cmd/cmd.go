@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	version   = "1.0.0-dev"
+	version   = "1.0.0"
 	envPrefix = "SFTPGO_PLUGIN_METADATA_"
 )
 
