@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/drakkan/sftpgo/v2/sdk/plugin/metadata"
 	"github.com/hashicorp/go-plugin"
+	"github.com/sftpgo/sdk/plugin/metadata"
 	"github.com/urfave/cli/v2"
 
 	"github.com/sftpgo/sftpgo-plugin-metadata/db"
